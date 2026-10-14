@@ -4,6 +4,22 @@ A web app that loads a day of data at a time, computes quality metrics, detects 
 failures, investigates each one with tools to find the root cause, and **measures its own
 accuracy on injected faults**. Click *Run next day* / *Queue fault* in the dashboard to watch it work.
 
+Pipeline Health Monitor with a Root-Cause Agent
+
+Data pipelines fail quietly: a column starts filling with nulls, a schema changes upstream, or units switch from miles to kilometres, and bad data reaches dashboards before anyone notices. This project watches a daily data feed for exactly those failures.
+
+What it does
+
+Loads one day of data at a time into SQL and computes quality metrics per column (row count, null rate, duplicates, mean, spread and distribution).
+Detects anomalies against a rolling baseline using robust statistics (median/MAD), schema diffs and distribution tests (KS and PSI).
+Passes each alert to a root-cause agent, which uses six investigation tools to find the cause and returns a fixed JSON result: cause, evidence, confidence and suggested fix.
+Streams alerts to a live dashboard over WebSocket, with a detail page showing every tool call the agent made.
+Evaluates itself: it injects six types of faults and reports detection rate, false alarm rate and root-cause accuracy against baselines.
+
+What makes it different: most monitoring demos stop at a chart with a red dot. This one compares three detectors and three investigation setups on 30 known faults and 30 clean days, so the claims are measured, not just shown.
+
+Stack: Python, Pandas, NumPy, SciPy/Scikit-learn, SQLite, FastAPI (REST and WebSocket), JavaScript dashboard, deployed on Render
+
 ## Architecture
 
 ```
