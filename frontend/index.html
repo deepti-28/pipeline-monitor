@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline Health Monitor</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Pipeline Health Monitor</h1>
+    <span id="status" class="pill">loading&hellip;</span>
+  </div>
+  <div class="controls">
+    <button id="run" class="primary">Run next day</button>
+    <select id="fault" aria-label="Fault to inject"></select>
+    <button id="inject">Queue fault</button>
+    <button id="reset" class="ghost">Reset</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<nav>
+  <button data-tab="overview" class="tab active">Overview</button>
+  <button data-tab="alerts" class="tab">Live alerts <span id="badge" class="badge" hidden>0</span></button>
+  <button data-tab="detail" class="tab">Alert detail</button>
+  <button data-tab="eval" class="tab">Evaluation</button>
+</nav>
+
+<main>
+  <section id="tab-overview" class="panel">
+    <div class="row">
+      <label>Metric <select id="feature"></select></label>
+      <span class="legend"><i class="dot red"></i>alert <i class="dot orange"></i>fault missed <i class="dot grey"></i>warm-up <i class="dot blue"></i>normal</span>
+    </div>
+    <div class="chartbox"><canvas id="trend"></canvas></div>
+    <p class="hint">Try it: pick a fault, click <b>Queue fault</b>, then <b>Run next day</b>. The first 14 days are the warm-up baseline.</p>
+  </section>
+
+  <section id="tab-alerts" class="panel" hidden>
+    <div id="feed"></div>
+  </section>
+
+  <section id="tab-detail" class="panel" hidden>
+    <div id="detail"><p class="hint">Select an alert from the live feed.</p></div>
+  </section>
+
+  <section id="tab-eval" class="panel" hidden>
+    <div id="eval"><p class="hint">Loading evaluation results&hellip;</p></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1559 @@
+{
+ "meta": {
+  "n_faulty": 30,
+  "n_clean": 30,
+  "history_days": 14,
+  "seed": 7,
+  "data": "synthetic NYC-taxi-shaped (see README)",
+  "faults": [
+   "null_spike",
+   "duplicate_rows",
+   "schema_change",
+   "distribution_drift",
+   "missing_partial_day",
+   "unit_change"
+  ],
+  "note": "The two LLM-style rows are scripted analyzers that see less information than the full agent; they are stand-ins for LLM setups, not LLM calls."
+ },
+ "detection": [
+  {
+   "name": "Fixed threshold",
+   "detection": {
+    "k": 19,
+    "n": 30,
+    "rate": 0.633,
+    "ci95": [
+     0.455,
+     0.781
+    ]
+   },
+   "false_alarms": {
+    "k": 0,
+    "n": 30,
+    "rate": 0.0,
+    "ci95": [
+     -0.0,
+     0.114
+    ]
+   },
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "distribution_drift": {
+     "k": 0,
+     "n": 5,
+     "rate": 0.0,
+     "ci95": [
+      -0.0,
+      0.434
+     ]
+    },
+    "missing_partial_day": {
+     "k": 4,
+     "n": 5,
+     "rate": 0.8,
+     "ci95": [
+      0.376,
+      0.964
+     ]
+    },
+    "unit_change": {
+     "k": 0,
+     "n": 5,
+     "rate": 0.0,
+     "ci95": [
+      -0.0,
+      0.434
+     ]
+    }
+   }
+  },
+  {
+   "name": "Rolling z-score",
+   "detection": {
+    "k": 29,
+    "n": 30,
+    "rate": 0.967,
+    "ci95": [
+     0.833,
+     0.994
+    ]
+   },
+   "false_alarms": {
+    "k": 2,
+    "n": 30,
+    "rate": 0.067,
+    "ci95": [
+     0.018,
+     0.213
+    ]
+   },
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "distribution_drift": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "missing_partial_day": {
+     "k": 4,
+     "n": 5,
+     "rate": 0.8,
+     "ci95": [
+      0.376,
+      0.964
+     ]
+    },
+    "unit_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    }
+   }
+  },
+  {
+   "name": "Median/MAD + KS/PSI (ours)",
+   "detection": {
+    "k": 30,
+    "n": 30,
+    "rate": 1.0,
+    "ci95": [
+     0.886,
+     1.0
+    ]
+   },
+   "false_alarms": {
+    "k": 0,
+    "n": 30,
+    "rate": 0.0,
+    "ci95": [
+     -0.0,
+     0.114
+    ]
+   },
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "distribution_drift": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "missing_partial_day": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "unit_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    }
+   }
+  }
+ ],
+ "agent": [
+  {
+   "name": "LLM-style: alert text only",
+   "cause_accuracy_given_alert": {
+    "k": 25,
+    "n": 30,
+    "rate": 0.833,
+    "ci95": [
+     0.664,
+     0.927
+    ]
+   },
+   "end_to_end_accuracy": {
+    "k": 25,
+    "n": 30,
+    "rate": 0.833,
+    "ci95": [
+     0.664,
+     0.927
+    ]
+   },
+   "avg_tool_calls": 0.0,
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "distribution_drift": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "missing_partial_day": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "unit_change": {
+     "k": 0,
+     "n": 5,
+     "rate": 0.0,
+     "ci95": [
+      -0.0,
+      0.434
+     ]
+    }
+   }
+  },
+  {
+   "name": "LLM-style: metric history",
+   "cause_accuracy_given_alert": {
+    "k": 25,
+    "n": 30,
+    "rate": 0.833,
+    "ci95": [
+     0.664,
+     0.927
+    ]
+   },
+   "end_to_end_accuracy": {
+    "k": 25,
+    "n": 30,
+    "rate": 0.833,
+    "ci95": [
+     0.664,
+     0.927
+    ]
+   },
+   "avg_tool_calls": 1.17,
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 0,
+     "n": 5,
+     "rate": 0.0,
+     "ci95": [
+      -0.0,
+      0.434
+     ]
+    },
+    "distribution_drift": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "missing_partial_day": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "unit_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    }
+   }
+  },
+  {
+   "name": "Full tool-using agent",
+   "cause_accuracy_given_alert": {
+    "k": 30,
+    "n": 30,
+    "rate": 1.0,
+    "ci95": [
+     0.886,
+     1.0
+    ]
+   },
+   "end_to_end_accuracy": {
+    "k": 30,
+    "n": 30,
+    "rate": 1.0,
+    "ci95": [
+     0.886,
+     1.0
+    ]
+   },
+   "avg_tool_calls": 3.5,
+   "per_fault": {
+    "null_spike": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "duplicate_rows": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "schema_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "distribution_drift": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "missing_partial_day": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    },
+    "unit_change": {
+     "k": 5,
+     "n": 5,
+     "rate": 1.0,
+     "ci95": [
+      0.566,
+      1.0
+     ]
+    }
+   }
+  }
+ ],
+ "cases": [
+  {
+   "id": "clean-0",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-0",
+   "label": "faulty",
+   "fault": "null_spike",
+   "info": {
+    "fault": "null_spike",
+    "column": "fare_amount",
+    "fraction": 0.257
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "null_spike",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "null_spike"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 5
+   }
+  },
+  {
+   "id": "clean-1",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-1",
+   "label": "faulty",
+   "fault": "duplicate_rows",
+   "info": {
+    "fault": "duplicate_rows",
+    "fraction": 0.165
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "duplicate_rows",
+    "LLM-style: metric history": "duplicate_rows",
+    "Full tool-using agent": "duplicate_rows"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 3
+   }
+  },
+  {
+   "id": "clean-2",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-2",
+   "label": "faulty",
+   "fault": "schema_change",
+   "info": {
+    "fault": "schema_change",
+    "column": "fare_amount",
+    "change": "renamed"
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "schema_change",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "schema_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 1
+   }
+  },
+  {
+   "id": "clean-3",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-3",
+   "label": "faulty",
+   "fault": "distribution_drift",
+   "info": {
+    "fault": "distribution_drift",
+    "column": "PULocationID",
+    "fraction": 0.303
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "distribution_drift",
+    "Full tool-using agent": "distribution_drift"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 0,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-4",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-4",
+   "label": "faulty",
+   "fault": "missing_partial_day",
+   "info": {
+    "fault": "missing_partial_day",
+    "kept_fraction": 0.3
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "missing_partial_day",
+    "LLM-style: metric history": "missing_partial_day",
+    "Full tool-using agent": "missing_partial_day"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-5",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-5",
+   "label": "faulty",
+   "fault": "unit_change",
+   "info": {
+    "fault": "unit_change",
+    "column": "trip_distance",
+    "factor": 1.609
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "unit_change",
+    "Full tool-using agent": "unit_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 3,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-6",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-6",
+   "label": "faulty",
+   "fault": "null_spike",
+   "info": {
+    "fault": "null_spike",
+    "column": "payment_type",
+    "fraction": 0.256
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "null_spike",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "null_spike"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 5
+   }
+  },
+  {
+   "id": "clean-7",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-7",
+   "label": "faulty",
+   "fault": "duplicate_rows",
+   "info": {
+    "fault": "duplicate_rows",
+    "fraction": 0.046
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "duplicate_rows",
+    "LLM-style: metric history": "duplicate_rows",
+    "Full tool-using agent": "duplicate_rows"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 3
+   }
+  },
+  {
+   "id": "clean-8",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-8",
+   "label": "faulty",
+   "fault": "schema_change",
+   "info": {
+    "fault": "schema_change",
+    "column": "fare_amount",
+    "change": "dropped"
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "schema_change",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "schema_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 1
+   }
+  },
+  {
+   "id": "clean-9",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-9",
+   "label": "faulty",
+   "fault": "distribution_drift",
+   "info": {
+    "fault": "distribution_drift",
+    "column": "passenger_count",
+    "fraction": 0.331
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "distribution_drift",
+    "Full tool-using agent": "distribution_drift"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 0,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-10",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-10",
+   "label": "faulty",
+   "fault": "missing_partial_day",
+   "info": {
+    "fault": "missing_partial_day",
+    "kept_fraction": 0.352
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "missing_partial_day",
+    "LLM-style: metric history": "missing_partial_day",
+    "Full tool-using agent": "missing_partial_day"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-11",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-11",
+   "label": "faulty",
+   "fault": "unit_change",
+   "info": {
+    "fault": "unit_change",
+    "column": "trip_distance",
+    "factor": 1.609
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "unit_change",
+    "Full tool-using agent": "unit_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 3,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-12",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-12",
+   "label": "faulty",
+   "fault": "null_spike",
+   "info": {
+    "fault": "null_spike",
+    "column": "payment_type",
+    "fraction": 0.321
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "null_spike",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "null_spike"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 5
+   }
+  },
+  {
+   "id": "clean-13",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-13",
+   "label": "faulty",
+   "fault": "duplicate_rows",
+   "info": {
+    "fault": "duplicate_rows",
+    "fraction": 0.205
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "duplicate_rows",
+    "LLM-style: metric history": "duplicate_rows",
+    "Full tool-using agent": "duplicate_rows"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 3
+   }
+  },
+  {
+   "id": "clean-14",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-14",
+   "label": "faulty",
+   "fault": "schema_change",
+   "info": {
+    "fault": "schema_change",
+    "column": "fare_amount",
+    "change": "dropped"
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "schema_change",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "schema_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 1
+   }
+  },
+  {
+   "id": "clean-15",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-15",
+   "label": "faulty",
+   "fault": "distribution_drift",
+   "info": {
+    "fault": "distribution_drift",
+    "column": "passenger_count",
+    "fraction": 0.443
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "distribution_drift",
+    "Full tool-using agent": "distribution_drift"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 0,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-16",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-16",
+   "label": "faulty",
+   "fault": "missing_partial_day",
+   "info": {
+    "fault": "missing_partial_day",
+    "kept_fraction": 0.425
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "missing_partial_day",
+    "LLM-style: metric history": "missing_partial_day",
+    "Full tool-using agent": "missing_partial_day"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-17",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-17",
+   "label": "faulty",
+   "fault": "unit_change",
+   "info": {
+    "fault": "unit_change",
+    "column": "trip_distance",
+    "factor": 1.609
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "unit_change",
+    "Full tool-using agent": "unit_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 3,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-18",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-18",
+   "label": "faulty",
+   "fault": "null_spike",
+   "info": {
+    "fault": "null_spike",
+    "column": "PULocationID",
+    "fraction": 0.204
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "null_spike",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "null_spike"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 5
+   }
+  },
+  {
+   "id": "clean-19",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-19",
+   "label": "faulty",
+   "fault": "duplicate_rows",
+   "info": {
+    "fault": "duplicate_rows",
+    "fraction": 0.078
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "duplicate_rows",
+    "LLM-style: metric history": "duplicate_rows",
+    "Full tool-using agent": "duplicate_rows"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 3
+   }
+  },
+  {
+   "id": "clean-20",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-20",
+   "label": "faulty",
+   "fault": "schema_change",
+   "info": {
+    "fault": "schema_change",
+    "column": "payment_type",
+    "change": "renamed"
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "schema_change",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "schema_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 1
+   }
+  },
+  {
+   "id": "clean-21",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-21",
+   "label": "faulty",
+   "fault": "distribution_drift",
+   "info": {
+    "fault": "distribution_drift",
+    "column": "payment_type",
+    "fraction": 0.232
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "distribution_drift",
+    "Full tool-using agent": "distribution_drift"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 0,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-22",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-22",
+   "label": "faulty",
+   "fault": "missing_partial_day",
+   "info": {
+    "fault": "missing_partial_day",
+    "kept_fraction": 0.3
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "missing_partial_day",
+    "LLM-style: metric history": "missing_partial_day",
+    "Full tool-using agent": "missing_partial_day"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-23",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-23",
+   "label": "faulty",
+   "fault": "unit_change",
+   "info": {
+    "fault": "unit_change",
+    "column": "trip_distance",
+    "factor": 1.609
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "unit_change",
+    "Full tool-using agent": "unit_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 3,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-24",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-24",
+   "label": "faulty",
+   "fault": "null_spike",
+   "info": {
+    "fault": "null_spike",
+    "column": "payment_type",
+    "fraction": 0.133
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "null_spike",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "null_spike"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 5
+   }
+  },
+  {
+   "id": "clean-25",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-25",
+   "label": "faulty",
+   "fault": "duplicate_rows",
+   "info": {
+    "fault": "duplicate_rows",
+    "fraction": 0.211
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "duplicate_rows",
+    "LLM-style: metric history": "duplicate_rows",
+    "Full tool-using agent": "duplicate_rows"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 3
+   }
+  },
+  {
+   "id": "clean-26",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-26",
+   "label": "faulty",
+   "fault": "schema_change",
+   "info": {
+    "fault": "schema_change",
+    "column": "fare_amount",
+    "change": "dropped"
+   },
+   "detected": {
+    "Fixed threshold": true,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "schema_change",
+    "LLM-style: metric history": "null_spike",
+    "Full tool-using agent": "schema_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 1
+   }
+  },
+  {
+   "id": "clean-27",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-27",
+   "label": "faulty",
+   "fault": "distribution_drift",
+   "info": {
+    "fault": "distribution_drift",
+    "column": "passenger_count",
+    "fraction": 0.425
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "distribution_drift",
+    "Full tool-using agent": "distribution_drift"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 0,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-28",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-28",
+   "label": "faulty",
+   "fault": "missing_partial_day",
+   "info": {
+    "fault": "missing_partial_day",
+    "kept_fraction": 0.749
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "missing_partial_day",
+    "LLM-style: metric history": "missing_partial_day",
+    "Full tool-using agent": "missing_partial_day"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 1,
+    "Full tool-using agent": 4
+   }
+  },
+  {
+   "id": "clean-29",
+   "label": "clean",
+   "fault": null,
+   "info": null,
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": false,
+    "Median/MAD + KS/PSI (ours)": false
+   }
+  },
+  {
+   "id": "faulty-29",
+   "label": "faulty",
+   "fault": "unit_change",
+   "info": {
+    "fault": "unit_change",
+    "column": "trip_distance",
+    "factor": 1.609
+   },
+   "detected": {
+    "Fixed threshold": false,
+    "Rolling z-score": true,
+    "Median/MAD + KS/PSI (ours)": true
+   },
+   "pred": {
+    "LLM-style: alert text only": "distribution_drift",
+    "LLM-style: metric history": "unit_change",
+    "Full tool-using agent": "unit_change"
+   },
+   "tool_calls": {
+    "LLM-style: alert text only": 0,
+    "LLM-style: metric history": 3,
+    "Full tool-using agent": 4
+   }
+  }
+ ]
+}
