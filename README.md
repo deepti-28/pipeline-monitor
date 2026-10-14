@@ -17,6 +17,10 @@ Daily file -> Loader -> SQLite (trips table)
                  |
       FastAPI -> alerts / agent_runs -> WebSocket -> dashboard (served by the same app)
 ```
+## Dataset
+
+Source: NYC Taxi & Limousine Commission (TLC) Trip Record Data, Yellow Taxi Trip Records, January 2026 (yellow_tripdata_2026-01.parquet). It is published by the NYC TLC; see the TLC page for its terms of use and the official Yellow Taxi data dictionary. Direct file: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2026-01.parquet
+
 
 ## Run it
 
