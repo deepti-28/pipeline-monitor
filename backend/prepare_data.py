@@ -1,71 +1,105 @@
-"""Split raw NYC TLC Yellow Taxi monthly files into one parquet file per day.
+"""Create data/daily/*: one file per day, from NYC yellow-taxi parquet files in data/raw/.
 
-Usage:  python -m backend.prepare_data
-
-Reads every data/raw/yellow_tripdata_YYYY-MM.parquet, keeps only trips whose pickup time
-falls inside that month (TLC files contain stray dates), optionally drops physically
-impossible rows, and writes data/daily/YYYY-MM-DD.parquet. Existing daily files are
-replaced, so the folder always matches the raw files.
+Falls back to synthetic data (backend/synth.py) if no raw files exist,
+so a fresh deploy (e.g. on Render) still starts with data.
 """
-import re
+import sys
+from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 
-from .config import ROOT
+try:
+    import pyarrow  # noqa: F401
+    HAS_PARQUET = True
+except ImportError:
+    HAS_PARQUET = False
 
+ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
 DAILY = ROOT / "data" / "daily"
 
 TIME_COL = "tpep_pickup_datetime"
 COLUMNS = [TIME_COL, "passenger_count", "trip_distance", "fare_amount", "payment_type", "PULocationID"]
 
-# Light cleaning of physically impossible values (negative fares, trips of hundreds of miles).
-# Nulls are NOT removed: natural nulls (e.g. passenger_count) are part of the real data.
-# Describe this step in the README. Set CLEAN = False to keep every row.
+# Cleaning (set CLEAN = False to keep everything)
 CLEAN = True
 MAX_DISTANCE = 100    # miles
 MAX_FARE = 1000       # dollars
 
+# Fraction of each day's trips to keep. 1.0 keeps everything;
+# the old version used 0.04 (~100k trips/day -> ~4k).
+SAMPLE_FRAC = 1.0
+MIN_ROWS = 1000       # skip days too small to compute stable metrics
+
+
+def daily_files():
+    return sorted(list(DAILY.glob("*.parquet")) + list(DAILY.glob("*.csv")))
+
+
+def read_day(path) -> pd.DataFrame:
+    path = str(path)
+    if path.endswith(".parquet"):
+        return pd.read_parquet(path)
+    return pd.read_csv(path, parse_dates=[TIME_COL])
+
+
+def _write(df: pd.DataFrame, day: str):
+    DAILY.mkdir(parents=True, exist_ok=True)
+    if HAS_PARQUET:
+        df.to_parquet(DAILY / f"{day}.parquet", index=False)
+    else:
+        df.to_csv(DAILY / f"{day}.csv", index=False)
+
 
 def split_month(path):
-    m = re.search(r"(\d{4})-(\d{2})", path.stem)
-    if not m:
-        print(f"skip {path.name}: no YYYY-MM in the file name")
-        return 0
-    start = pd.Timestamp(int(m.group(1)), int(m.group(2)), 1)
-    end = start + pd.offsets.MonthBegin(1)
-
+    """Split one raw parquet file into one file per pickup day."""
     df = pd.read_parquet(path, columns=COLUMNS)
-    n_raw = len(df)
-    df = df[(df[TIME_COL] >= start) & (df[TIME_COL] < end)]
-    n_month = len(df)
+    df = df.dropna(subset=[TIME_COL])
     if CLEAN:
-        df = df[(df["trip_distance"] >= 0) & (df["trip_distance"] <= MAX_DISTANCE)
-                & (df["fare_amount"] >= 0) & (df["fare_amount"] <= MAX_FARE)]
-    print(f"{path.name}: {n_raw:,} rows -> {n_month:,} in month -> {len(df):,} after cleaning")
+        df = df[(df["trip_distance"] >= 0) & (df["trip_distance"] <= MAX_DISTANCE)]
+        df = df[(df["fare_amount"] >= 0) & (df["fare_amount"] <= MAX_FARE)]
+    df = df.assign(day=df[TIME_COL].dt.date.astype(str))
+    # keep only the modal month (real files contain a few stray dates)
+    month = df["day"].str[:7].mode()[0]
+    df = df[df["day"].str.startswith(month)]
 
-    for c in df.select_dtypes("float64"):
-        df[c] = df[c].astype("float32")
-    for c in df.select_dtypes("int64"):
-        df[c] = df[c].astype("int32")
+    written = 0
+    for day, g in df.groupby("day"):
+        if SAMPLE_FRAC < 1.0:
+            g = g.sample(frac=SAMPLE_FRAC, random_state=0)
+        if len(g) < MIN_ROWS:
+            continue
+        g = g.drop(columns="day").sort_values(TIME_COL).reset_index(drop=True)
+        _write(g, day)
+        written += 1
+    print(f"split {path} -> {written} daily files (month {month})", file=sys.stderr)
 
-    days = df[TIME_COL].dt.strftime("%Y-%m-%d")
-    count = 0
-    for day, g in df.groupby(days):
-        g.to_parquet(DAILY / f"{day}.parquet", index=False)
-        count += 1
-    return count
+
+def make_synthetic(n_days: int = 45, seed: int = 42, start: str = "2024-03-01"):
+    import numpy as np
+    from .synth import make_day  # only needed if there is no raw data
+    rng = np.random.default_rng(seed)
+    d0 = date.fromisoformat(start)
+    for i in range(n_days):
+        d = d0 + timedelta(days=i)
+        _write(make_day(d, rng), str(d))
+
+
+def ensure_daily_files():
+    if daily_files():
+        return
+    raw = sorted(RAW.glob("*.parquet")) if RAW.exists() else []
+    if raw:
+        for p in raw:
+            split_month(p)
+    else:
+        make_synthetic()
 
 
 def main():
-    files = sorted(RAW.glob("yellow_tripdata_*.parquet"))
-    if not files:
-        raise SystemExit(f"No raw files found in {RAW}")
-    DAILY.mkdir(parents=True, exist_ok=True)
-    for old in DAILY.glob("*.parquet"):
-        old.unlink()
-    total = sum(split_month(f) for f in files)
-    print(f"Wrote {total} daily files to {DAILY}")
+    ensure_daily_files()
+    print(f"{len(daily_files())} daily files in {DAILY}", file=sys.stderr)
 
 
 if __name__ == "__main__":
