@@ -21,13 +21,13 @@ def inject(df: pd.DataFrame, fault: str, rng: np.random.Generator):
     if fault == "null_spike":
         col = str(rng.choice(["fare_amount", "trip_distance", "payment_type", "PULocationID"]))
         frac = float(rng.uniform(0.04, 0.40))
-        d[col] = d[col].astype(float)
+        d[col] = d[col].astype(float)          # integer columns cannot hold NaN
         d.loc[rng.random(n) < frac, col] = np.nan
         info.update(column=col, fraction=round(frac, 3))
 
     elif fault == "duplicate_rows":
         frac = float(rng.uniform(0.03, 0.25))
-        dup = d.sample(frac=frac, random_state=int(rng.integers(1e9)))
+        dup = d.sample(frac=frac, random_state=int(rng.integers(10**9)))
         d = pd.concat([d, dup]).sort_values("tpep_pickup_datetime", kind="stable").reset_index(drop=True)
         info.update(fraction=round(frac, 3))
 
@@ -47,7 +47,8 @@ def inject(df: pd.DataFrame, fault: str, rng: np.random.Generator):
         if choice == "payment_type":
             d.loc[mask, "payment_type"] = 2
         elif choice == "PULocationID":
-            d.loc[mask, "PULocationID"] = rng.integers(1, 6, mask.sum())
+            # cast to the column's own dtype (int32 in the daily files) to avoid a dtype warning
+            d.loc[mask, "PULocationID"] = rng.integers(1, 6, mask.sum()).astype(d["PULocationID"].dtype)
         elif choice == "passenger_count":
             d.loc[mask, "passenger_count"] = 4.0
         else:

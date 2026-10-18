@@ -11,13 +11,15 @@ from scipy.stats import ks_2samp
 from .config import CAT_COLS, CONT_COLS
 from .metrics import flatten
 
-THR = 5.0  # robust-z threshold
-KS_THR = 0.08
-PSI_THR = 0.2
+THR = 5.0      # robust-z threshold
+KS_THR = 0.10  # KS statistic (effect size), not a p-value: with thousands of rows p-values flag trivia
+PSI_THR = 0.2  # standard PSI rule of thumb: >0.2 = significant shift
+PSI_TOP_K = 15  # keep the K most common categories, pool the rest into "other"
 
-# Relative noise floors: sampling noise differs by statistic (std/p95 are noisier than mean).
-REL_FLOOR = {"mean": 0.02, "median": 0.02, "p95": 0.03, "std": 0.06, "distinct": 0.02,
-             "top_share": 0.02, "row_count": 0.03}
+# Relative noise floors: sampling noise differs by statistic. Tail statistics (std, p95)
+# are much noisier than means, so they get wider floors.
+REL_FLOOR = {"mean": 0.03, "median": 0.03, "p95": 0.08, "std": 0.15, "distinct": 0.05,
+             "top_share": 0.03, "row_count": 0.03}
 RATE_SUFFIXES = ("null_rate", "dup_rate", "top_share")
 
 
@@ -30,27 +32,38 @@ def robust_stats(vals, feat):
     vals = np.asarray(vals, float)
     med = float(np.median(vals))
     suffix = feat.split(".")[-1]
-    rel = REL_FLOOR.get(suffix, 0.02)
+    rel = REL_FLOOR.get(suffix, 0.03)
     abs_floor = 0.005 if suffix in RATE_SUFFIXES else 1e-6
     scale = max(1.4826 * _mad(vals), rel * abs(med), abs_floor)
     return med, scale
 
 
 def baseline_from(hist, hflat, feat, weekend: bool):
-    """(median, scale) for a feature. row_count is adjusted for weekday vs weekend."""
-    series = [h[feat] for h in hflat if feat in h]
-    if feat == "row_count":
-        groups = {True: [], False: []}
-        for snap, h in zip(hist, hflat):
-            groups[snap["dow"] >= 5].append(h["row_count"])
-        if len(groups[weekend]) >= 3:
-            med_g = {k: float(np.median(v)) for k, v in groups.items() if v}
-            resid = [x - med_g[k] for k, v in groups.items() for x in v]
-            med = med_g[weekend]
-            scale = max(1.4826 * _mad(resid), REL_FLOOR["row_count"] * med, 1.0)
-            return med, scale
+    """(median, scale) for a feature, adjusted for weekday vs weekend.
+
+    Real traffic changes by day type (row count, fares, distances, payment mix), so the
+    baseline is the median of days of the same type, and the noise scale comes from the
+    residuals after removing each group's median. Falls back to the pooled median/MAD
+    when there are fewer than 3 days of today's type in the window.
+    """
+    groups = {True: [], False: []}
+    for snap, h in zip(hist, hflat):
+        if feat in h and h[feat] is not None:
+            groups[snap["dow"] >= 5].append(h[feat])
+    series = groups[True] + groups[False]
     if len(series) < 5:
         return None, None
+
+    suffix = feat.split(".")[-1]
+    rel = REL_FLOOR.get(suffix, 0.03)
+    abs_floor = 0.005 if suffix in RATE_SUFFIXES else (1.0 if feat == "row_count" else 1e-6)
+
+    if len(groups[weekend]) >= 3:
+        med_g = {k: float(np.median(v)) for k, v in groups.items() if v}
+        resid = [x - med_g[k] for k, v in groups.items() for x in v]
+        med = med_g[weekend]
+        scale = max(1.4826 * _mad(resid), rel * abs(med), abs_floor)
+        return med, scale
     return robust_stats(series, feat)
 
 
@@ -86,22 +99,41 @@ def _alert(name, today, flags):
 
 # ---------------------------------------------------------------- Baseline A
 def detect_fixed(hist, today, **_):
+    """Static-rule baseline, calibrated once from the history window (percentage bands):
+    null rate +5 points, duplicate rate +1 point, row count within +/-40% of the window
+    median, mean fare and mean distance within +/-25% of the window median.
+    Rules are fixed bands: no weekday adjustment, no distribution tests."""
     flags = []
+
+    def med(xs):
+        xs = [x for x in xs if x is not None]
+        return float(np.median(xs)) if xs else 0.0
+
     for c, m in today["columns"].items():
         nr = m.get("null_rate")
-        if nr is not None and nr > 0.05:
-            flags.append(dict(feature=f"{c}.null_rate", kind="rule", value=nr, baseline=0.05, score=nr / 0.05))
-    if (today.get("dup_rate") or 0) > 0.01:
-        flags.append(dict(feature="dup_rate", kind="rule", value=today["dup_rate"], baseline=0.01,
-                          score=today["dup_rate"] / 0.01))
+        base = med([h["columns"][c].get("null_rate") for h in hist if c in h["columns"]])
+        if nr is not None and nr > base + 0.05:
+            flags.append(dict(feature=f"{c}.null_rate", kind="rule", value=nr, baseline=base,
+                              score=(nr - base) / 0.05))
+
+    base_dup = med([h.get("dup_rate") for h in hist])
+    dup = today.get("dup_rate") or 0
+    if dup > base_dup + 0.01:
+        flags.append(dict(feature="dup_rate", kind="rule", value=dup, baseline=base_dup,
+                          score=(dup - base_dup) / 0.01))
+
+    base_rc = med([h["row_count"] for h in hist])
     rc = today["row_count"]
-    if rc < 2000 or rc > 7000:
-        flags.append(dict(feature="row_count", kind="rule", value=rc, baseline=4000, score=(rc - 4000) / 2000))
-    for col, lo, hi in (("fare_amount", 6, 20), ("trip_distance", 1, 6)):
-        mean = today["columns"][col].get("mean")
-        if mean is not None and not (lo <= mean <= hi):
-            flags.append(dict(feature=f"{col}.mean", kind="rule", value=mean, baseline=(lo + hi) / 2,
-                              score=abs(mean - (lo + hi) / 2) / ((hi - lo) / 2)))
+    if base_rc and (rc < 0.6 * base_rc or rc > 1.4 * base_rc):
+        flags.append(dict(feature="row_count", kind="rule", value=rc, baseline=base_rc,
+                          score=(rc - base_rc) / (0.4 * base_rc)))
+
+    for col in ("fare_amount", "trip_distance"):
+        mean = today["columns"].get(col, {}).get("mean")
+        base = med([h["columns"][col].get("mean") for h in hist if col in h["columns"]])
+        if mean is not None and base and abs(mean - base) > 0.25 * base:
+            flags.append(dict(feature=f"{col}.mean", kind="rule", value=mean, baseline=base,
+                              score=(mean - base) / (0.25 * base)))
     return _alert("Fixed threshold", today, flags)
 
 
@@ -127,11 +159,17 @@ def _sample(series, n, rng):
     return a if len(a) <= n else rng.choice(a, n, replace=False)
 
 
-def psi(a_series, b_series):
+def psi(a_series, b_series, top_k: int = PSI_TOP_K):
+    """Population stability index on the top_k most common reference categories plus
+    'other'. Without pooling, rare categories (e.g. hundreds of pickup zones) that appear
+    on only one side blow up the score through the smoothing term and cause false alarms."""
     a = pd.to_numeric(a_series, errors="coerce").dropna()
     b = pd.to_numeric(b_series, errors="coerce").dropna()
     if len(a) < 200 or len(b) < 200:
         return None
+    top = set(b.value_counts().nlargest(top_k).index)
+    a = a.where(a.isin(top), -999999)
+    b = b.where(b.isin(top), -999999)
     pa, pb = a.value_counts(normalize=True), b.value_counts(normalize=True)
     cats = pa.index.union(pb.index)
     pa = pa.reindex(cats).fillna(0).to_numpy() + 1e-4

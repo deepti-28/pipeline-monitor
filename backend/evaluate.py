@@ -1,11 +1,13 @@
-"""Runs all experiments: python -m backend.evaluate
+"""Runs all experiments on the real daily files: python -m backend.evaluate
 
-60 cases = 30 faulty (5 per fault type) + 30 clean. Each case is 14 clean history days
-plus one test day. Writes results/eval_results.json and results/results.md.
+Reads data/daily/*.parquet (NYC TLC Yellow Taxi trips, one file per day).
+Each case = 14 consecutive real days as history plus one test day. With N days there are
+N-14 windows; each window yields one faulty case (fault injected into the test day, fault
+types cycled) and one clean case (test day untouched).
+Writes results/eval_results.json and results/results.md.
 """
 import json
 import math
-from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
@@ -13,11 +15,22 @@ import pandas as pd
 from .agent.agent import run_agent
 from .agent.baselines import alert_text_only, history_only
 from .agent.tools import Ctx
-from .config import FAULTS, RESULTS, WINDOW
+from .config import FAULTS, RESULTS, ROOT, WINDOW
 from .detector import detect_fixed, detect_robust, detect_rolling_z
 from .inject_faults import inject
 from .metrics import compute_snapshot
-from .synth import make_day
+
+DAILY = ROOT / "data" / "daily"
+
+# Documented calendar events, taken from the calendar and weather records, NOT from detector
+# output: US federal holidays and the NYC winter storm of Jan 25-26, 2026.
+EVENT_DATES = {
+    "2025-12-25": "Christmas Day",
+    "2026-01-01": "New Year's Day",
+    "2026-01-19": "Martin Luther King Jr. Day",
+    "2026-01-25": "NYC winter storm",
+    "2026-01-26": "NYC winter storm",
+}
 
 DETECTORS = {
     "Fixed threshold": detect_fixed,
@@ -25,7 +38,7 @@ DETECTORS = {
     "Median/MAD + KS/PSI (ours)": detect_robust,
 }
 OURS = "Median/MAD + KS/PSI (ours)"
-AGENTS = ["LLM-style: alert text only", "LLM-style: metric history", "Full tool-using agent"]
+AGENTS = ["Scripted baseline: alert text only", "Scripted baseline: metric history", "Full tool-using agent"]
 
 
 def wilson(k, n, z=1.96):
@@ -42,26 +55,39 @@ def _rate(k, n):
     return {"k": k, "n": n, "rate": round(k / n, 3) if n else None, "ci95": wilson(k, n)}
 
 
-def run_eval(n_pool=45, seed=7, n_cases=30):
-    rng = np.random.default_rng(seed)
-    start = date(2024, 6, 3)
-    dfs, snaps = [], []
-    for i in range(n_pool):
-        d = start + timedelta(days=i)
-        df = make_day(d, rng)
+def load_real_days():
+    files = sorted(DAILY.glob("*.parquet"))
+    if len(files) < WINDOW + FAULTS.__len__():
+        raise RuntimeError(f"Need at least {WINDOW + len(FAULTS)} daily files in {DAILY}, found {len(files)}")
+    dates, dfs, snaps = [], [], []
+    for f in files:
+        df = pd.read_parquet(f)
+        dates.append(f.stem)                      # file name is the date, e.g. 2026-01-15
         dfs.append(df)
-        snaps.append(compute_snapshot(df, str(d)))
+        snaps.append(compute_snapshot(df, f.stem))
+    gaps = pd.to_datetime(pd.Series(dates)).diff().dt.days.dropna()
+    if (gaps > 1).any():
+        print("WARNING: missing days between daily files; some windows are not consecutive.")
+    return dates, dfs, snaps
+
+
+def run_eval(seed=7):
+    dates, dfs, snaps = load_real_days()
+    n_windows = len(dfs) - WINDOW
 
     cases = []
-    for i in range(n_cases):
-        hist = snaps[i:i + WINDOW]
-        ref = pd.concat([x.sample(400, random_state=i) for x in dfs[i:i + WINDOW]])
-        day = str(start + timedelta(days=i + WINDOW))
-        fault = FAULTS[i % len(FAULTS)]
-        fdf, info = inject(dfs[i + WINDOW], fault, np.random.default_rng(1000 + i))
-        for label, df in (("clean", dfs[i + WINDOW]), ("faulty", fdf)):
-            snap = snaps[i + WINDOW] if label == "clean" else compute_snapshot(df, day)
-            case = {"id": f"{label}-{i}", "label": label, "fault": fault if label == "faulty" else None,
+    for w in range(n_windows):
+        hist = snaps[w:w + WINDOW]
+        ref = pd.concat([x.sample(min(400, len(x)), random_state=w) for x in dfs[w:w + WINDOW]])
+        day = dates[w + WINDOW]
+        fault = FAULTS[w % len(FAULTS)]
+        fdf, info = inject(dfs[w + WINDOW], fault, np.random.default_rng(1000 + w))
+
+        for label in ("faulty", "clean"):
+            df = dfs[w + WINDOW] if label == "clean" else fdf
+            snap = snaps[w + WINDOW] if label == "clean" else compute_snapshot(df, day)
+            case = {"id": f"{label}-{w}", "label": label, "date": day,
+                    "fault": fault if label == "faulty" else None,
                     "info": info if label == "faulty" else None, "detected": {}}
             alerts = {}
             for name, fn in DETECTORS.items():
@@ -80,6 +106,7 @@ def run_eval(n_pool=45, seed=7, n_cases=30):
 
     faulty = [c for c in cases if c["label"] == "faulty"]
     clean = [c for c in cases if c["label"] == "clean"]
+    ordinary = [c for c in clean if c["date"] not in EVENT_DATES]
 
     detection = []
     for name in DETECTORS:
@@ -89,6 +116,8 @@ def run_eval(n_pool=45, seed=7, n_cases=30):
             "name": name,
             "detection": _rate(sum(c["detected"][name] for c in faulty), len(faulty)),
             "false_alarms": _rate(sum(c["detected"][name] for c in clean), len(clean)),
+            "false_alarms_ordinary": _rate(sum(c["detected"][name] for c in ordinary), len(ordinary)),
+            "flagged_clean_days": [c["date"] for c in clean if c["detected"][name]],
             "per_fault": per_fault,
         })
 
@@ -109,10 +138,16 @@ def run_eval(n_pool=45, seed=7, n_cases=30):
         })
 
     return {
-        "meta": {"n_faulty": len(faulty), "n_clean": len(clean), "history_days": WINDOW, "seed": seed,
-                 "data": "synthetic NYC-taxi-shaped (see README)", "faults": FAULTS,
-                 "note": "The two LLM-style rows are scripted analyzers that see less information than the "
-                         "full agent; they are stand-ins for LLM setups, not LLM calls."},
+        "meta": {"n_faulty": len(faulty), "n_clean": len(clean), "n_ordinary_clean": len(ordinary),
+                 "history_days": WINDOW, "seed": seed, "n_days": len(dfs),
+                 "date_range": [dates[0], dates[-1]],
+                 "data": "NYC TLC Yellow Taxi trips (real daily files)",
+                 "faults": FAULTS, "event_dates": EVENT_DATES,
+                 "note": "Faults are injected into real days; every window is used once for a faulty case "
+                         "and once for a clean case. 'Clean' means no fault was injected, not that the day is "
+                         "free of real anomalies. 'Ordinary' clean days exclude documented events (federal "
+                         "holidays and the Jan 25-26 2026 NYC winter storm). The scripted baselines see less "
+                         "information than the full agent; they are not LLM calls."},
         "detection": detection,
         "agent": agent,
         "cases": cases,
@@ -123,12 +158,21 @@ def to_markdown(res) -> str:
     def pct(r):
         return "n/a" if r["rate"] is None else f"{r['rate']:.0%} ({r['k']}/{r['n']})"
 
-    lines = ["## Detection (30 faulty days, 30 clean days)", "",
-             "| Detector | Detection rate | False alarm rate |", "|---|---|---|"]
+    m = res["meta"]
+    lines = [f"## Detection ({m['n_faulty']} faulty days, {m['n_clean']} clean days; "
+             f"{m['date_range'][0]} to {m['date_range'][1]})", "",
+             f"| Detector | Detection rate | False alarms, all clean days | "
+             f"False alarms, ordinary days ({m['n_ordinary_clean']}) |", "|---|---|---|---|"]
     for d in res["detection"]:
-        lines.append(f"| {d['name']} | {pct(d['detection'])} | {pct(d['false_alarms'])} |")
+        lines.append(f"| {d['name']} | {pct(d['detection'])} | {pct(d['false_alarms'])} | "
+                     f"{pct(d['false_alarms_ordinary'])} |")
+    lines += ["", "Documented events excluded from 'ordinary': " +
+              ", ".join(f"{k} ({v})" for k, v in m["event_dates"].items()), "",
+              "Clean days flagged by each detector:"]
+    for d in res["detection"]:
+        lines.append(f"- {d['name']}: {', '.join(d['flagged_clean_days']) or 'none'}")
     lines += ["", "## Root-cause accuracy (on days our detector flagged)", "",
-              "| Setup | Cause accuracy | End-to-end (all 30 faulty) | Avg tool calls |", "|---|---|---|---|"]
+              f"| Setup | Cause accuracy | End-to-end (all {m['n_faulty']} faulty) | Avg tool calls |", "|---|---|---|---|"]
     for a in res["agent"]:
         lines.append(f"| {a['name']} | {pct(a['cause_accuracy_given_alert'])} | {pct(a['end_to_end_accuracy'])} "
                      f"| {a['avg_tool_calls']} |")
