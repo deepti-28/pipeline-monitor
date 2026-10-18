@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
-data/daily/
-data/monitor.db*
 .venv/
+.env
+data/raw/
+data/monitor.db*
